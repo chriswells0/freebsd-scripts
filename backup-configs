@@ -1,0 +1,96 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Backs up common config files that may have been modified on the system.
+	Parameters:
+		-d destination (optional): directory to save the backup to
+			Default: /var/backups/configs
+		-f file_name (optional): name to use for the backup file
+			Default: hostname-yyyy-mm-ddThh:mm:ss.tar.gz
+		-j jail_root (optional): path where jails are located
+			Default: /usr/jails
+		-s subdirectory (optional): subdirectory to use for the backup
+			Default: no value
+			Useful for naming a backup snapshot while using the default destination and name.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname $(readlink -f "$0"))/lib/shell.common"
+
+
+# Require root to be sure all files are accessible. -- cwells
+requireRootOrExit
+
+parseScriptOptions "$@"
+
+BACKUP_DIR=$(getOption '-d')
+if [ -z "$BACKUP_DIR" ]; then
+	BACKUP_DIR=/var/backups/configs
+fi
+
+BACKUP_FILE=$(getOption '-f')
+if [ -z "$BACKUP_FILE" ]; then
+	BACKUP_FILE="$(hostname)-$(date +%Y-%m-%dT%H:%M:%S).tar.gz"
+fi
+
+JAIL_ROOT=$(getOption '-j')
+if [ -z "$JAIL_ROOT" ]; then
+	JAIL_ROOT=/usr/jails
+fi
+
+# Any paths in this list that don't exist on the current system will be excluded. -- cwells
+CONFIGS="/etc/
+/usr/local/etc/
+/usr/local/ossec-hids/etc/
+/usr/local/ossec-hids/rules/
+$JAIL_ROOT/*/etc/
+$JAIL_ROOT/*/usr/local/etc/
+$JAIL_ROOT/*/var/db/dkim/"
+
+
+# Create backup directory if it does not exist. -- cwells
+if [ ! -d "$BACKUP_DIR" ]; then
+	# shellcheck disable=SC2174
+	mkdir -m 750 -p "$BACKUP_DIR"
+fi
+
+# If a subdirectory was provided, append it to the backup directory. -- cwells
+SUBDIRECTORY=$(getOption '-s')
+if [ -n "$SUBDIRECTORY" ]; then
+	BACKUP_DIR="$BACKUP_DIR/$SUBDIRECTORY"
+	if [ ! -d "$BACKUP_DIR" ]; then
+		# shellcheck disable=SC2174
+		mkdir -m 750 -p "$BACKUP_DIR"
+	fi
+fi
+
+
+# Expand wildcards and remove invalid (non-existent) paths from the list. -- cwells
+VALID_CONFIGS=''
+for CONFIG_PATH in $CONFIGS; do
+	if [ -e "$CONFIG_PATH" ]; then
+		VALID_CONFIGS="$VALID_CONFIGS$CONFIG_PATH
+"
+	fi
+done
+
+
+echo '
+Backing up config files...'
+
+# shellcheck disable=SC2039
+echo -n "$VALID_CONFIGS" | tar -czf "$BACKUP_DIR/$BACKUP_FILE" -T -
+
+if [ -e "$BACKUP_DIR/$BACKUP_FILE" ] && [ -s "$BACKUP_DIR/$BACKUP_FILE" ]; then
+	chmod 640 "$BACKUP_DIR/$BACKUP_FILE"
+	echo "Saved configs to: $BACKUP_DIR/$BACKUP_FILE"
+else
+	echo 'Error creating backup!'
+fi
+
+
+exit 0

@@ -1,0 +1,78 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Backs up Let's Encrypt certs, Apache includes, and www directory.
+	Parameters:
+		-d destination (optional): directory to save the backup to
+			Default: /var/backups/apache/yyyy-mm-ddThh:mm:ss
+		-j jail_path (optional): path to a jail where Apache is installed
+			Default: no value - backs up Apache from the local host
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/lib/shell.common"
+
+
+# Require root to be sure all files are accessible. -- cwells
+requireRootOrExit
+
+parseScriptOptions "$@"
+
+JAIL_PATH=$(getOption '-j')
+if [ -z "$JAIL_PATH" ]; then
+	JAIL_PATH=''
+fi
+
+BACKUP_DIR=$(getOption '-d')
+if [ -z "$BACKUP_DIR" ]; then
+	if [ -n "$JAIL_PATH" ]; then # Include the jail name in the backup. -- cwells
+		BACKUP_DIR="/var/backups/apache/$(basename "$JAIL_PATH")-$(date +%Y-%m-%dT%H:%M:%S)"
+	else
+		BACKUP_DIR="/var/backups/apache/$(date '+%Y-%m-%dT%H:%M:%S')"
+	fi
+fi
+
+
+# Create backup directory if it does not exist. -- cwells
+if [ ! -d "$BACKUP_DIR" ]; then
+	# shellcheck disable=SC2174
+	mkdir -m 750 -p "$BACKUP_DIR"
+fi
+
+# Ensure the backup does not already exist. -- cwells
+if [ -f "$BACKUP_DIR/Includes.tar.gz" ]; then
+	echo 'Error: Includes.tar.gz already exists.'
+	exit 1
+elif [ -f "$BACKUP_DIR/letsencrypt.tar.gz" ]; then
+	echo 'Error: letsencrypt.tar.gz already exists.'
+	exit 1
+elif [ -f "$BACKUP_DIR/www.tar.gz" ]; then
+	echo 'Error: www.tar.gz already exists.'
+	exit 1
+fi
+
+echo '
+Creating backup:
+'
+
+if [ -d "$JAIL_PATH/usr/local/etc/letsencrypt" ]; then
+	echo 'TLS certs...'
+	tar -czf "$BACKUP_DIR/letsencrypt.tar.gz" -C "$JAIL_PATH/usr/local/etc/" "letsencrypt/"
+fi
+if [ -d "$JAIL_PATH/usr/local/etc/apache24/Includes" ]; then
+	echo 'Config files...'
+	tar -czf "$BACKUP_DIR/Includes.tar.gz" -C "$JAIL_PATH/usr/local/etc/apache24/Includes/" "."
+fi
+if [ -d "$JAIL_PATH/usr/local/www" ]; then
+	echo 'Hosted files...'
+	tar -czf "$BACKUP_DIR/www.tar.gz" -C "$JAIL_PATH/usr/local/www/" "."
+fi
+
+echo "
+Saved backup to: $BACKUP_DIR"
+
+exit 0
