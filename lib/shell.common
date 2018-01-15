@@ -1,0 +1,167 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Defines functions frequently used in shell scripts.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# Returns:
+#	full path to the current script
+getScriptPath() {
+	dirname "$(readlink -f "$0")"
+}
+
+# Parameters:
+#	$1 = relative or full path to the script to import
+importScript() {
+	SCRIPT_PATH=$(getScriptPath)
+	if [ -f "$SCRIPT_PATH/lib/$1" ]; then
+		# shellcheck source=/dev/null
+		. "$SCRIPT_PATH/lib/$1"
+	elif [ -f "$SCRIPT_PATH/../lib/$1" ]; then
+		# shellcheck source=/dev/null
+		. "$SCRIPT_PATH/../lib/$1"
+	elif [ -f "$SCRIPT_PATH/$1" ]; then
+		# shellcheck source=/dev/null
+		. "$SCRIPT_PATH/$1"
+	elif [ -f "$1" ]; then
+		# shellcheck source=/dev/null
+		. "$1"
+	else
+		echo "Error: '$1' was not found."
+		exit 1
+	fi
+}
+
+# Parameters:
+#	$1 (optional) = action that occurs after pressing Enter
+#		Default is 'continue' when not provided.
+pressEnterTo() {
+	if [ -n "$1" ]; then
+		ACTION="$1"
+	else
+		ACTION='continue'
+	fi
+	# shellcheck disable=SC2039
+	read -r -p "
+Press \"Enter\" to $ACTION..." _
+}
+
+# Parameters:
+#	$1 (optional) = custom error message to display if the user is not root
+requireRootOrExit() {
+	if [ "$(id -u)" != "0" ]; then
+		if [ -n "$1" ]; then
+			MESSAGE="$1"
+		else
+			MESSAGE='This script must be executed as root or using sudo.'
+		fi
+		echo "$MESSAGE" 1>&2
+		exit 1
+	fi
+}
+
+
+################################################################################
+# Hashes (Associative Arrays / Dictionaries)
+################################################################################
+
+# Parameters:
+#	$1 = name of the hash variable
+#	$2 = key to search for
+# Returns:
+#	result code indicating whether the specified key exists in the hash
+hashContainsKey() {
+	alias "HASH_$1_$2" > /dev/null 2>&1
+}
+
+# Parameters:
+#	$1 = name of the hash variable
+#	$2 = value to search for
+# Returns:
+#	result code indicating whether the specified value exists in the hash
+hashContainsValue() {
+	alias | grep -Eq "^HASH_$1_.+='?$2'?\$"
+}
+
+# Parameters:
+#	$1 = name of the hash variable
+#	$2 = key for the value that should be retrieved
+# Returns:
+#	value found for the specified key
+hashGet() {
+	alias "HASH_$1_$2" 2> /dev/null | awk -F"=" '{ gsub(/^'\''|'\''$/, "", $2); print $2; }'
+}
+
+# Parameters:
+#	$1 = name of the hash variable
+#	$2 = key to use
+#	$3 (optional) = the value to store
+#		Default is an empty string when not provided.
+hashPut() {
+	# shellcheck disable=SC2139
+	alias "HASH_$1_$2=$3"
+}
+
+
+################################################################################
+# Script Options
+################################################################################
+
+getOption() {
+	hashGet 'SCRIPT_OPTS' "$1"
+}
+
+optionIsEnabled() {
+	hashContainsKey 'SCRIPT_OPTS' "$1"
+}
+
+parseScriptOptions() {
+	for SCRIPT_ARG in "$@"; do
+		case $SCRIPT_ARG in
+			-* )
+				setOption "$SCRIPT_ARG"
+				LAST_SWITCH=$SCRIPT_ARG ;;
+			* )
+				if [ -n "$LAST_SWITCH" ]; then
+					setOption "$LAST_SWITCH" "$SCRIPT_ARG"
+				else
+					setOption "$SCRIPT_ARG"
+				fi
+				LAST_SWITCH='' ;;
+		esac
+	done
+}
+
+setOption() {
+	hashPut 'SCRIPT_OPTS' "$1" "$2"
+}
+
+
+################################################################################
+# Note Management
+################################################################################
+
+# Parameters:
+#	$1 = message to append to the notes for the currently running script
+addNote() {
+	# Not using appendToFile here to ensure this file has no dependencies. -- cwells
+	#appendToFile "$0.notes" "$1"
+	echo "$1" >> "$0.notes"
+}
+
+# Parameters:
+#	$1 (optional) = message to display above the notes for this script
+showNotes() {
+	if [ -n "$1" ]; then
+		MESSAGE="$1"
+	else
+		MESSAGE='The following notes were saved in'
+	fi
+	echo "$MESSAGE $0.notes:
+
+$(cat "$0.notes")"
+}
