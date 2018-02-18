@@ -111,14 +111,24 @@ hashPut() {
 # Script Options
 ################################################################################
 
+# Parameters:
+#	$1 = name of the option whose value should be returned
+# Returns:
+#	value provided for the specified option
 getOption() {
 	hashGet 'SCRIPT_OPTS' "$1"
 }
 
+# Parameters:
+#	$1 = name of the option to check
+# Returns:
+#	result code indicating whether the specified option was passed to the script
 optionIsEnabled() {
 	hashContainsKey 'SCRIPT_OPTS' "$1"
 }
 
+# Parameters:
+#	$@ = full list of options passed to the script
 parseScriptOptions() {
 	for SCRIPT_ARG in "$@"; do
 		case $SCRIPT_ARG in
@@ -136,6 +146,9 @@ parseScriptOptions() {
 	done
 }
 
+# Parameters:
+#	$1 = name of the option to set
+#	$2 = value to set for the specified option
 setOption() {
 	hashPut 'SCRIPT_OPTS' "$1" "$2"
 }
