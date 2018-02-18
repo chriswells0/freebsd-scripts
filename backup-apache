@@ -2,7 +2,7 @@
 
 :<<DOCUMENTATION
 
-	Description:	Backs up Let's Encrypt certs, Apache includes, and www directory.
+	Description:	Backs up Let's Encrypt certs, Apache includes, and the www directory.
 	Parameters:
 		-d destination (optional): directory to save the backup to
 			Default: /var/backups/apache/yyyy-mm-ddThh:mm:ss
