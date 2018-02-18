@@ -4,6 +4,18 @@ A collection of shell scripts to perform common actions (mostly related to syste
 
 Feedback and contributions are welcome!
 
+## Scripts
+
+[backup-apache](backup-apache) backs up Let's Encrypt certs (if present), Apache includes, and the www directory. If Apache is installed in a jail, you can provide the path to the jail to back up from there.
+
+---
+
+[backup-configs](backup-configs) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as from inside all jails. Also backs up configs for OSSEC and DKIM, if present.
+
+---
+
+[portsfetch](portsfetch) can be used to switch to the current quarterly branch for FreeBSD ports and to update your local ports tree after switching. See [Using Quarterly Ports on FreeBSD](https://chriswells.io/blog/using-quarterly-ports-on-freebsd) for background information and usage instructions.
+
 ## Libraries
 
 Currently, the bulk of this project consists of the scripts in the [lib](lib) directory that provide functions for other scripts to use. I've made changes to make those libraries more flexible before sharing them, and I'll release additional scripts over time as I update them to incorporate those changes.
@@ -72,15 +84,3 @@ Finally, a couple of functions that allow scripts to accumulate a list of notes 
 * replaceText: Replaces the specified text with the provided text.
 * commentLine: Comments a line by prefixing with # or a provided value.
 * uncommentLine: Uncomments a line by removing # or a provided value.
-
-## Scripts
-
-[backup-apache](backup-apache) backs up Let's Encrypt certs (if present), Apache includes, and the www directory. If Apache is installed in a jail, you can provide the path to the jail to back up from there.
-
----
-
-[backup-config](backup-config) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as all jails plus configs for OSSEC and DKIM.
-
----
-
-The [portsfetch](portsfetch) script can be used to switch to the current quarterly branch for FreeBSD ports and to update your local ports tree after switching. See [Using Quarterly Ports on FreeBSD](https://chriswells.io/blog/using-quarterly-ports-on-freebsd) for background information and usage instructions.
