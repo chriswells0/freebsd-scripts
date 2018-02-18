@@ -22,16 +22,18 @@ Currently, the bulk of this project consists of the scripts in the [lib](lib) di
 
 ---
 
+### shell.common
+
 [lib/shell.common](lib/shell.common) defines functions frequently used in shell scripts.
 
-### General
+#### General
 
 * getScriptPath: Returns full path to the current script.
 * importScript: Imports another script.
 * pressEnterTo: Asks the user to press enter to perform an action.
 * requireRootOrExit: Exits the script with an error message if the user is not root or using sudo.
 
-### Hashes (Associative Arrays / Dictionaries)
+#### Hashes (Associative Arrays / Dictionaries)
 
 It includes functions for managing hashes (associative arrays / dictionaries), which are used by other functions in the file:
 
@@ -40,7 +42,7 @@ It includes functions for managing hashes (associative arrays / dictionaries), w
 * hashGet: Returns value found for the specified key.
 * hashPut: Adds an item to the hash.
 
-### Script Options
+#### Script Options
 
 There are limited functions for reading script options such as `-p` and `-param value`, but not `-abc` where all 3 are different options:
 
@@ -49,7 +51,7 @@ There are limited functions for reading script options such as `-p` and `-param 
 * parseScriptOptions: Parses the command line options for the other option functions.
 * setOption: Sets an option. Used by parseScriptOptions, but available to scripts as well.
 
-### Note Management
+#### Note Management
 
 Finally, a couple of functions that allow scripts to accumulate a list of notes to be shown to the user after the script completes:
 
@@ -58,21 +60,23 @@ Finally, a couple of functions that allow scripts to accumulate a list of notes 
 
 ---
 
+### shell.io
+
 [lib/shell.io](lib/shell.io) defines functions commonly used for file input/output.
 
-### Utility Functions
+#### Utility Functions
 
 * generateHexString: Returns a random hex string of the requested length (default 8).
 * getTempFileName: Provides a string that can be used as the name of a temp file.
 * runAsScriptInJail: Executes commands as a shell script inside the specified jail.
 
-### Text Manipulation
+#### Text Manipulation
 
 * escapeAwkSearchText: Returns input string with special characters escaped for awk.
 * escapeForSed: Returns input string with special characters escaped for sed.
 * escapeNewlines: Returns input string with newlines escaped.
 
-### File Manipulation
+#### File Manipulation
 
 * appendToFile: Appends text to the end of the specified file.
 * createOrReplaceFile: Creates or replaces the specified file with the provided contents.
