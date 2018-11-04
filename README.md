@@ -16,6 +16,10 @@ Feedback and contributions are welcome!
 
 [portsfetch](portsfetch) can be used to switch to the current quarterly branch for FreeBSD ports and to update your local ports tree after switching. See [Using Quarterly Ports on FreeBSD](https://chriswells.io/blog/using-quarterly-ports-on-freebsd) for background information and usage instructions.
 
+---
+
+[update-host](update-host) performs a basic update sequence including `freebsd-update` on the host plus a vulnerability audit and upgrade of packages on the host and inside each jail.
+
 ## Libraries
 
 Currently, the bulk of this project consists of the scripts in the [lib](lib) directory that provide functions for other scripts to use. I've made changes to make those libraries more flexible before sharing them, and I'll release additional scripts over time as I update them to incorporate those changes.
