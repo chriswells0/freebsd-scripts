@@ -19,7 +19,7 @@ DOCUMENTATION
 
 
 # shellcheck source=/dev/null
-. "$(dirname $(readlink -f "$0"))/lib/shell.common"
+. "$(dirname "$(readlink -f "$0")")/lib/shell.common"
 
 
 # Require root to be sure all files are accessible. -- cwells
