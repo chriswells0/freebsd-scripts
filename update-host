@@ -1,0 +1,31 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Updates the base system plus performs package upgrades on the host and jails.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/lib/shell.common"
+
+
+# Require root to perform updates. -- cwells
+requireRootOrExit
+
+freebsd-update fetch install
+
+printf "\nChecking for vulnerable packages on the host...\n"
+pkg audit -F
+printf "\nUpgrading packages on the host...\n"
+pkg upgrade
+
+for JAIL in $(jls -N host.hostname); do
+	printf "\nChecking for vulnerable packages in the %s jail...\n" "$JAIL"
+	pkg -j "$JAIL" audit -F
+	printf "\nUpgrading packages in the %s jail...\n" "$JAIL"
+	pkg -j "$JAIL" upgrade
+done
+
+exit 0
