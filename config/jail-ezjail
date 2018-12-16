@@ -1,0 +1,96 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Installs and configures ezjail.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/../lib/shell.common"
+importScript 'shell.io'
+importScript 'shell.pkg'
+
+# Require root in order to write to the config files. -- cwells
+requireRootOrExit
+
+SCRIPT_PATH="$(getScriptPath)"
+
+parseScriptOptions "$@"
+
+################################################################################
+
+if ! installPackages 'ezjail'; then
+	echo 'Failed to install ezjail.'
+	exit 1
+fi
+
+# Back up the config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s fresh-ezjail
+addNote 'Created backup: fresh-ezjail'
+
+# Enable ZFS for jails. -- cwells
+# shellcheck disable=SC2039
+echo -n '
+Updating ezjail.conf...'
+uncommentLine /usr/local/etc/ezjail.conf 'ezjail_use_zfs="YES"'
+uncommentLine /usr/local/etc/ezjail.conf 'ezjail_use_zfs_for_jails="YES"'
+replaceLine /usr/local/etc/ezjail.conf '# ezjail_jailzfs="tank/ezjail"' 'ezjail_jailzfs="zroot/usr/jails"'
+echo ' Done.'
+
+# Configure a cloned loopback interface for the jail and enable ezjail. -- cwells
+# shellcheck disable=SC2039
+echo -n '
+Updating rc.conf...'
+# shellcheck disable=SC2016
+appendToFile /etc/rc.conf '
+# Enable jails on a cloned loopback interface:
+ezjail_enable="YES"
+cloned_interfaces="${cloned_interfaces} lo1"
+ifconfig_lo1="inet 127.1.0.0/16"
+'
+echo ' Done.'
+
+# Configure pf for jails. -- cwells
+# shellcheck disable=SC2039
+echo -n '
+Updating pf.conf...'
+# shellcheck disable=SC2016
+insertAfterLine /etc/pf.conf 'loop_if="lo0"' '# Interface and network for jails:
+jail_if="lo1"
+jail_net=$jail_if:network'
+# shellcheck disable=SC2016
+insertAfterLine /etc/pf.conf 'scrub in all' '
+# Enable NAT for jails:
+nat on $lan_if from $jail_net to any -> ($lan_if)
+'
+echo ' Done.'
+
+# Enable the cloned loopback interface, start ezjail, and install the ports tree. -- cwells
+service netif cloneup
+service ezjail start
+if optionIsEnabled '-q'; then
+	ezjail-admin install -p
+	"$SCRIPT_PATH/../portsfetch" /usr/jails/basejail/usr/ports
+elif optionIsEnabled '-p'; then
+	ezjail-admin install -p
+else
+	ezjail-admin install
+fi
+
+# Back up the config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s ezjail-configured
+addNote 'Created backup: ezjail-configured'
+
+addNote 'Installed and configured ezjail, but no jails were created.'
+showNotes
+
+# Saved until the end because it disconnects the SSH session. -- cwells
+pressEnterTo 'enable NAT for jails (disconnects SSH session)'
+pfctl -F all -f /etc/pf.conf
+# Can I use this instead without losing the connection?
+# pfctl -s nat
+
+exit 0
