@@ -1,0 +1,116 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Creates a jail and performs the base configuration.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/../lib/shell.common"
+importScript 'shell.io'
+importScript 'shell.pkg'
+
+# Require root in order to write to the config files. -- cwells
+requireRootOrExit
+
+SCRIPT_PATH="$(getScriptPath)"
+
+parseScriptOptions "$@"
+
+INTERFACE=$(getOption '--interface')
+JAIL_IP=$(getOption '--ip')
+JAIL_NAME=$(getOption '--name')
+ROOT_EMAIL=$(getOption '--root-email')
+
+if [ -z "$JAIL_NAME" ]; then
+	echo 'You must specify the jail name using --name.'
+	exit 1
+fi
+
+if [ -z "$INTERFACE" ]; then
+	INTERFACE='lo1'
+fi
+
+if [ -z "$JAIL_IP" ]; then
+	INTERFACE='127.1.1.1'
+fi
+
+################################################################################
+
+if ! hasPackage 'ezjail'; then
+	echo 'You must run jail-ezjail before running this script.'
+	exit 1
+fi
+
+ezjail-admin create "$JAIL_NAME" "$INTERFACE|$JAIL_IP"
+ezjail-admin start "$JAIL_NAME"
+
+# Back up the fresh jail config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s "fresh-${JAIL_NAME}-jail"
+addNote "Created backup: fresh-${JAIL_NAME}-jail"
+
+echo 'Done.'
+
+################################################################################
+
+# Configure the jail. -- cwells
+mkdir "/usr/jails/$JAIL_NAME/root/bin/"
+cp /etc/resolv.conf "/usr/jails/$JAIL_NAME/etc/"
+commentLine "/usr/jails/$JAIL_NAME/etc/hosts" '127.0.0.1		localhost localhost.my.domain'
+appendToFile "/usr/jails/$JAIL_NAME/etc/hosts" "
+# Must use the jail loopback IP for some services to work. -- cwells
+$JAIL_IP		localhost localhost.my.domain $JAIL_NAME
+"
+# shellcheck disable=SC2016
+appendToFile "/usr/jails/$JAIL_NAME/etc/rc.conf" '
+kern_securelevel_enable="YES"
+kern_securelevel="3"
+rpcbind_enable="NO"
+sendmail_enable="NO"
+cron_flags="$cron_flags -J 15"
+syslogd_flags="-ss"
+clear_tmp_enable="YES"
+'
+
+# This cron job should be disabled inside jails. -- cwells
+commentLine "/usr/jails/$JAIL_NAME/etc/crontab" '1,31	0-5	*	*	*	root	adjkerntz -a'
+
+if [ -n "$ROOT_EMAIL" ]; then
+	insertAfterLine "/usr/jails/$JAIL_NAME/etc/mail/aliases" '# root:	me@my.domain' "root: $ROOT_EMAIL"
+fi
+
+runAsScriptInJail "$JAIL_NAME" '
+passwd
+tzsetup
+cd /etc/mail
+make aliases
+make # Generates <jailname>.mc
+cd /etc/mail/certs
+openssl dhparam -out dh.param 2048
+'
+
+################################################################################
+
+# shellcheck disable=SC2039
+echo -n '
+Creating hosts entry...'
+appendToFile /etc/hosts "
+# Jail:
+$JAIL_IP	$JAIL_NAME"
+echo ' Done.'
+
+service ezjail restart
+ezjail-admin update -u
+
+################################################################################
+
+# Back up the fresh jail config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s "jail-${JAIL_NAME}-base"
+addNote "Created backup: jail-${JAIL_NAME}-base"
+
+echo 'Done.'
+
+exit 0
