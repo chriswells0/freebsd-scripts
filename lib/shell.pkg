@@ -8,21 +8,46 @@
 DOCUMENTATION
 
 
-# packageIsInstalled() {
+################################################################################
+# Package Management for Hosts
+################################################################################
+
+# Parameters:
+#	$1 = name of the package to check for
+# Returns:
+#	result code indicating whether the specified package is installed on the host
 hasPackage() {
 	pkg info "$1" > /dev/null 2>&1
 }
 
-# packageIsInstalledInJail() {
-jailHasPackage() {
-	pkg -j "$1" info "$2" > /dev/null 2>&1
-}
-
+# Parameters:
+#	$1 = name of the package(s) to install
+# Returns:
+#	result code indicating whether the specified package was installed on the host
 installPackages() {
 	# shellcheck disable=SC2086
 	pkg install -y $1
 }
 
+
+################################################################################
+# Package Management for Jails
+################################################################################
+
+# Parameters:
+#	$1 = name of the jail
+#	$2 = name of the package to check for
+# Returns:
+#	result code indicating whether the specified package is installed in the jail
+jailHasPackage() {
+	pkg -j "$1" info "$2" > /dev/null 2>&1
+}
+
+# Parameters:
+#	$1 = name of the jail
+#	$2 = name of the package(s) to install
+# Returns:
+#	result code indicating whether the specified package was installed in the jail
 jailPackages() {
 	# shellcheck disable=SC2086
 	pkg -j "$1" install -y $2

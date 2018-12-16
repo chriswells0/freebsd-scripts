@@ -92,3 +92,16 @@ Finally, a couple of functions that allow scripts to accumulate a list of notes 
 * replaceText: Replaces the specified text with the provided text.
 * commentLine: Comments a line by prefixing with # or a provided value.
 * uncommentLine: Uncomments a line by removing # or a provided value.
+
+---
+
+### shell.pkg
+
+[lib/shell.pkg](lib/shell.pkg) defines functions to assist with package management.
+
+#### Package Management Functions
+
+* hasPackage: Checks to see whether a given package is installed on the host.
+* installPackages: Installs one or more packages on the host.
+* jailHasPackage: Checks to see whether a given package is installed in a jail.
+* jailPackages: Installs one or more packages in a jail.
