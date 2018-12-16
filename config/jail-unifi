@@ -1,0 +1,82 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Installs and configures UniFi Controller inside a jail.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/../lib/shell.common"
+importScript 'shell.io'
+importScript 'shell.pkg'
+
+# Require root in order to write to the config files. -- cwells
+requireRootOrExit
+
+SCRIPT_PATH="$(getScriptPath)"
+
+parseScriptOptions "$@"
+
+JAIL_NAME=$(getOption '--name')
+
+if [ -z "$JAIL_NAME" ]; then
+	echo 'You must specify the jail name using --name.'
+	exit 1
+fi
+
+JAIL_IP="$(jls -N -j "$JAIL_NAME" ip4.addr)"
+
+################################################################################
+
+if ! hasPackage 'ezjail'; then
+	echo 'You must run jail-ezjail before running this script.'
+	exit 1
+fi
+
+# Back up the config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s "before-unifi"
+addNote "Created backup: before-unifi"
+
+jailPackages "$JAIL_NAME" 'unifi5'
+
+appendToFile "/usr/jails/$JAIL_NAME/etc/rc.conf" '
+# Enable MongoDB and UniFi:
+mongod_enable="YES"
+unifi_enable="YES"
+'
+
+# If custom settings are needed for UniFi, the file is here:
+# /usr/jails/$JAIL_NAME/usr/local/share/java/unifi/data/system.properties
+
+runAsScriptInJail "$JAIL_NAME" '
+service mongod start
+sleep 5
+service unifi start
+'
+
+# shellcheck disable=SC2039
+echo -n '
+Updating pf.conf...'
+# shellcheck disable=SC2016
+# shellcheck disable=SC2140
+insertAfterLine /etc/pf.conf 'jail_net=$jail_if:network' "${JAIL_NAME}_jail="\""$JAIL_IP"\"
+# shellcheck disable=SC2016
+insertAfterLine /etc/pf.conf 'nat on $lan_if from $jail_net to any -> ($lan_if)' "rdr pass on \$lan_if inet proto tcp to port 8443 -> \$${JAIL_NAME}_jail port 8443"
+echo ' Done.'
+
+################################################################################
+
+# Back up the final config files. -- cwells
+"$SCRIPT_PATH/../backup-configs" -s "jail-$JAIL_NAME-done"
+addNote "Created backup: jail-$JAIL_NAME-done"
+
+showNotes
+
+# Saved until the end because it disconnects the SSH session. -- cwells
+pressEnterTo 'reload pf config (disconnects SSH session)'
+pfctl -F all -f /etc/pf.conf
+
+exit 0
