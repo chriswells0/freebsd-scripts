@@ -1,0 +1,29 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Defines very basic functions for package management.
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# packageIsInstalled() {
+hasPackage() {
+	pkg info "$1" > /dev/null 2>&1
+}
+
+# packageIsInstalledInJail() {
+jailHasPackage() {
+	pkg -j "$1" info "$2" > /dev/null 2>&1
+}
+
+installPackages() {
+	# shellcheck disable=SC2086
+	pkg install -y $1
+}
+
+jailPackages() {
+	# shellcheck disable=SC2086
+	pkg -j "$1" install -y $2
+}
