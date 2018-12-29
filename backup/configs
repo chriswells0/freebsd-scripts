@@ -43,7 +43,19 @@ if [ -z "$JAIL_ROOT" ]; then
 fi
 
 # Any paths in this list that don't exist on the current system will be excluded. -- cwells
-CONFIGS="/etc/
+CONFIGS="/boot/*.eli
+/boot/device.hints
+/boot/encryption.key
+/boot/loader.conf
+/etc/
+/root/.cshrc
+/root/.login
+/root/.profile
+/usr/home/*/.bashrc
+/usr/home/*/.cshrc
+/usr/home/*/.inputrc
+/usr/home/*/.login
+/usr/home/*/.profile
 /usr/local/etc/
 /usr/local/ossec-hids/etc/
 /usr/local/ossec-hids/rules/
