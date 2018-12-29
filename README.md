@@ -6,11 +6,11 @@ Feedback and contributions are welcome!
 
 ## Scripts
 
-[backup-apache](backup-apache) backs up Let's Encrypt certs (if present), Apache includes, and the www directory. If Apache is installed in a jail, you can provide the path to the jail to back up from there.
+[backup/apache](backup/apache) backs up Let's Encrypt certs (if present), Apache includes, and the www directory. If Apache is installed in a jail, you can provide the path to the jail to back up from there.
 
 ---
 
-[backup-configs](backup-configs) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as from inside all jails. Also backs up configs for OSSEC and DKIM, if present.
+[backup/configs](backup/configs) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as from inside all jails. Also backs up configs for OSSEC and DKIM, if present.
 
 ---
 
