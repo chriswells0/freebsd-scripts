@@ -43,19 +43,16 @@ addNote "Created backup: before-unifi"
 jailPackages "$JAIL_NAME" 'unifi5'
 
 appendToFile "/usr/jails/$JAIL_NAME/etc/rc.conf" '
-# Enable MongoDB and UniFi:
-mongod_enable="YES"
+# Enable UniFi Controller:
 unifi_enable="YES"
 '
 
 # If custom settings are needed for UniFi, the file is here:
 # /usr/jails/$JAIL_NAME/usr/local/share/java/unifi/data/system.properties
 
-runAsScriptInJail "$JAIL_NAME" '
-service mongod start
-sleep 5
-service unifi start
-'
+runAsScriptInJail "$JAIL_NAME" 'service unifi start'
+
+################################################################################
 
 # shellcheck disable=SC2039
 echo -n '
