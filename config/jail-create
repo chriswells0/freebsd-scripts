@@ -3,6 +3,14 @@
 :<<DOCUMENTATION
 
 	Description:	Creates a jail and performs the base configuration.
+	Parameters:
+		--name jail_root (required): the name to use for the new jail
+		--interface ifname (optional): interface to assign to the jail
+			Default: lo1
+		--ip x.x.x.x (optional): IP address to assign to the jail
+			Default: 127.1.1.1
+		--root-email email_address (optional): email address to use for root inside the jail
+			Default: no value
 	Author:			Chris Wells (https://chriswells.io)
 
 DOCUMENTATION
