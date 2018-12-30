@@ -13,6 +13,9 @@
 		-s subdirectory (optional): subdirectory to use for the backup
 			Default: no value
 			Useful for naming a backup snapshot while using the default destination and name.
+		-t type (optional): type of system being backed up (e.g., desktop, server, or any value)
+			Default: no value
+			Useful for backing up a default set of files based on the system type.
 	Author:			Chris Wells (https://chriswells.io)
 
 DOCUMENTATION
@@ -42,7 +45,7 @@ if [ -z "$JAIL_ROOT" ]; then
 	JAIL_ROOT=/usr/jails
 fi
 
-# Any paths in this list that don't exist on the current system will be excluded. -- cwells
+# Any paths in this list that don't exist on the current system will be omitted. -- cwells
 CONFIGS="/boot/*.eli
 /boot/device.hints
 /boot/encryption.key
@@ -57,12 +60,30 @@ CONFIGS="/boot/*.eli
 /usr/home/*/.login
 /usr/home/*/.profile
 /usr/local/etc/
-/usr/local/ossec-hids/etc/
-/usr/local/ossec-hids/rules/
 $JAIL_ROOT/*/etc/
 $JAIL_ROOT/*/usr/local/etc/
-$JAIL_ROOT/*/var/db/dkim/"
+$JAIL_ROOT/*/var/db/dkim/
+$(getScriptPath)/configs-custom/*.txt"
 
+# Back up files for this type of system. -- cwells
+TYPE=$(getOption '-t')
+if [ -n "$TYPE" ] && [ -s "$(getScriptPath)/configs-custom/type-$TYPE.txt" ]; then
+	CONFIGS="$CONFIGS
+$(cat "$(getScriptPath)/configs-custom/type-$TYPE.txt")"
+fi
+
+# Include custom files that are common to all hosts. -- cwells
+if [ -s "$(getScriptPath)/configs-custom/host-all.txt" ]; then
+	CONFIGS="$CONFIGS
+$(cat "$(getScriptPath)/configs-custom/host-all.txt")"
+fi
+
+# Back up files that are specific to this host. -- cwells
+HOST=$(hostname)
+if [ -n "$HOST" ] && [ -s "$(getScriptPath)/configs-custom/host-$HOST.txt" ]; then
+	CONFIGS="$CONFIGS
+$(cat "$(getScriptPath)/configs-custom/host-$HOST.txt")"
+fi
 
 # Create backup directory if it does not exist. -- cwells
 if [ ! -d "$BACKUP_DIR" ]; then
@@ -83,12 +104,15 @@ fi
 
 # Expand wildcards and remove invalid (non-existent) paths from the list. -- cwells
 VALID_CONFIGS=''
+OLD_IFS=$IFS
+IFS=$'\n'
 for CONFIG_PATH in $CONFIGS; do
 	if [ -e "$CONFIG_PATH" ]; then
 		VALID_CONFIGS="$VALID_CONFIGS$CONFIG_PATH
 "
 	fi
 done
+IFS=$OLD_IFS
 
 
 echo '

@@ -10,7 +10,7 @@ Feedback and contributions are welcome!
 
 ---
 
-[backup/configs](backup/configs) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as from inside all jails. Also backs up configs for OSSEC and DKIM, if present.
+[backup/configs](backup/configs) backs up common config files that may have been modified on the system. Includes /etc and /usr/local/etc from the host as well as from inside all jails.
 
 ---
 
