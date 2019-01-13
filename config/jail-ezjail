@@ -28,8 +28,8 @@ if ! installPackages 'ezjail'; then
 fi
 
 # Back up the config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s fresh-ezjail
-addNote 'Created backup: fresh-ezjail'
+"$SCRIPT_PATH/../backup/configs" -s jail-ezjail-fresh
+addNote 'Created backup: jail-ezjail-fresh'
 
 # Enable ZFS for jails. -- cwells
 # shellcheck disable=SC2039
@@ -81,8 +81,8 @@ else
 fi
 
 # Back up the config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s ezjail-configured
-addNote 'Created backup: ezjail-configured'
+"$SCRIPT_PATH/../backup/configs" -s jail-ezjail-configured
+addNote 'Created backup: jail-ezjail-configured'
 
 addNote 'Installed and configured ezjail, but no jails were created.'
 showNotes

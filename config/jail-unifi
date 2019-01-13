@@ -37,8 +37,8 @@ if ! hasPackage 'ezjail'; then
 fi
 
 # Back up the config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s "before-unifi"
-addNote "Created backup: before-unifi"
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-before-create"
+addNote "Created backup: jail-$JAIL_NAME-before-create"
 
 jailPackages "$JAIL_NAME" 'unifi5'
 
@@ -70,7 +70,7 @@ echo ' Done.'
 ################################################################################
 
 # Back up the final config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s "jail-$JAIL_NAME-done"
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-done"
 addNote "Created backup: jail-$JAIL_NAME-done"
 
 showNotes

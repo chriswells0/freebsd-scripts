@@ -57,8 +57,8 @@ ezjail-admin create "$JAIL_NAME" "$INTERFACE|$JAIL_IP"
 ezjail-admin start "$JAIL_NAME"
 
 # Back up the fresh jail config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s "fresh-${JAIL_NAME}-jail"
-addNote "Created backup: fresh-${JAIL_NAME}-jail"
+"$SCRIPT_PATH/../backup/configs" -s "jail-create-${JAIL_NAME}-fresh"
+addNote "Created backup: jail-create-${JAIL_NAME}-fresh"
 
 echo 'Done.'
 
@@ -116,8 +116,8 @@ ezjail-admin update -u
 ################################################################################
 
 # Back up the fresh jail config files. -- cwells
-"$SCRIPT_PATH/../backup-configs" -s "jail-${JAIL_NAME}-base"
-addNote "Created backup: jail-${JAIL_NAME}-base"
+"$SCRIPT_PATH/../backup/configs" -s "jail-create-${JAIL_NAME}-base"
+addNote "Created backup: jail-create-${JAIL_NAME}-base"
 
 echo 'Done.'
 
