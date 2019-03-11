@@ -3,6 +3,8 @@
 :<<DOCUMENTATION
 
 	Description:	Installs and configures UniFi Controller inside a jail.
+	Parameters:
+		--name jail_name (required): the name of the existing jail to configure
 	Author:			Chris Wells (https://chriswells.io)
 
 DOCUMENTATION
@@ -18,27 +20,30 @@ requireRootOrExit
 
 SCRIPT_PATH="$(getScriptPath)"
 
+if ! hasPackage 'ezjail'; then
+	echo 'You must run jail-ezjail before running this script.'
+	exit 1
+fi
+
 parseScriptOptions "$@"
 
 JAIL_NAME=$(getOption '--name')
-
 if [ -z "$JAIL_NAME" ]; then
 	echo 'You must specify the jail name using --name.'
 	exit 1
 fi
 
 JAIL_IP="$(jls -N -j "$JAIL_NAME" ip4.addr)"
-
-################################################################################
-
-if ! hasPackage 'ezjail'; then
-	echo 'You must run jail-ezjail before running this script.'
+if [ -z "$JAIL_IP" ]; then
+	echo "Failed to get IP for $JAIL_NAME jail. Do you need to create it using jail-create?"
 	exit 1
 fi
 
+################################################################################
+
 # Back up the config files. -- cwells
-"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-before-create"
-addNote "Created backup: jail-$JAIL_NAME-before-create"
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-before-config"
+addNote "Created backup: jail-$JAIL_NAME-before-config"
 
 jailPackages "$JAIL_NAME" 'unifi5'
 
