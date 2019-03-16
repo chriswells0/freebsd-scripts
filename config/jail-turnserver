@@ -1,0 +1,176 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Installs and configures the Coturn TURN Server inside a jail.
+					Uses a config optimized for use with Nextcloud Talk / Spreed.ME.
+					References:
+					https://hub.docker.com/r/spreed/turnserver
+					https://github.com/coturn/coturn/blob/master/examples/etc/turnserver.conf
+					https://github.com/strukturag/docker-webrtc-turnserver/blob/master/coturn.sh
+					https://help.nextcloud.com/t/howto-setup-nextcloud-talk-with-turn-server/30794
+	Parameters:
+		--name jail_name (required): the name of an existing jail to configure
+		--realm domain_name (required): the domain name to use as the TURN realm
+		--static-auth-secret password (required): password to use for static auth
+		--cert tls_cert (required): path to a valid TLS public certificate
+		--pkey private_key (required): path to the TLS private key
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/../lib/shell.common"
+importScript 'shell.io'
+importScript 'shell.pkg'
+
+# Require root in order to write to the config files. -- cwells
+requireRootOrExit
+
+SCRIPT_PATH="$(getScriptPath)"
+
+if ! hasPackage 'ezjail'; then
+	echo 'You must run jail-ezjail before running this script.'
+	exit 1
+fi
+
+parseScriptOptions "$@"
+
+JAIL_NAME=$(getOption '--name')
+JAIL_IP="$(jls -N -j "$JAIL_NAME" ip4.addr)"
+REALM=$(getOption '--realm')
+STATIC_AUTH_SECRET=$(getOption '--static-auth-secret')
+PRIVATE_KEY=$(getOption '--pkey')
+TLS_CERT=$(getOption '--cert')
+
+if [ -z "$JAIL_NAME" ]; then
+	echo 'You must specify the jail name using --name.'
+	exit 1
+elif [ -z "$REALM" ]; then
+	echo 'You must specify a realm name using --realm.'
+	exit 1
+elif [ -z "$STATIC_AUTH_SECRET" ]; then
+	echo 'You must specify a password using --static-auth-secret.'
+	exit 1
+elif [ -z "$PRIVATE_KEY" ]; then
+	echo 'You must provide the path to a TLS private key using --pkey.'
+	exit 1
+elif [ -z "$TLS_CERT" ]; then
+	echo 'You must provide the path to a TLS public certificate using --cert.'
+	exit 1
+elif [ -z "$JAIL_IP" ]; then
+	echo "Failed to get IP for $JAIL_NAME jail. Do you need to create it using jail-create?"
+	exit 1
+fi
+
+################################################################################
+
+# Back up the config files. -- cwells
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-before-config"
+addNote "Created backup: jail-$JAIL_NAME-before-config"
+
+jailPackages "$JAIL_NAME" 'turnserver'
+
+appendToFile "/usr/jails/$JAIL_NAME/etc/rc.conf" '
+# Enable TURN server:
+turnserver_enable="YES"
+'
+
+# Create the turnserver config file. -- cwells
+createOrReplaceFile "/usr/jails/${JAIL_NAME}/usr/local/etc/turnserver.conf" "
+# Listen on the jail IP (local interface).
+listening-ip=$JAIL_IP
+
+# Specify external IP since it will differ from the jail IP.
+external-ip=$(curl ifconfig.me/ip)
+
+# Use fingerprints in the TURN messages.
+fingerprint
+
+# Enable using a static password:
+use-auth-secret
+
+# 'Static' authentication secret value.
+static-auth-secret=$STATIC_AUTH_SECRET
+
+# The default realm to be used for the users.
+realm=$REALM
+
+# Across the session, all requests must have the same
+# main ORIGIN attribute value (if the ORIGIN was
+# initially used by the session).
+check-origin-consistency
+
+# Limit the nonce lifetime to 600 seconds (10 minutes).
+stale-nonce=600
+
+# Certificate file (public key).
+cert=$TLS_CERT
+
+# Private key file.
+pkey=$PRIVATE_KEY
+
+# Use a secure cipher list:
+cipher-list="\""ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AES:RSA+3DES:!ADH:!AECDH:!MD5"\""
+
+# Reuse the sendmail DH param file:
+dh-file=/etc/mail/certs/dh.param
+
+# Flag to prevent stdout log messages.
+no-stdout-log
+
+# This flag means that no log file rollover will be used, and the log file
+# name will be constructed as-is, without PID and date appendage.
+simple-log
+
+# Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
+no-multicast-peers
+
+# Require authentication of the STUN Binding request.
+secure-stun
+
+# User name to run the process.
+#proc-user=nobody
+
+# Group name to run the process.
+#proc-group=nogroup
+
+# Turn OFF the CLI support.
+no-cli
+
+# Do not allow old versions of TLS.
+no-tlsv1
+no-tlsv1_1
+"
+
+runAsScriptInJail "$JAIL_NAME" 'service turnserver start'
+
+################################################################################
+
+# shellcheck disable=SC2039
+echo -n '
+Updating pf.conf...'
+# shellcheck disable=SC2016
+# shellcheck disable=SC2140
+insertAfterLine /etc/pf.conf 'jail_net=$jail_if:network' "${JAIL_NAME}_jail="\""$JAIL_IP"\""
+${JAIL_NAME}_tcp_ports="\""{ 3478, 5349 }"\""
+${JAIL_NAME}_udp_ports="\""{ 3478, 5349, 49152:65535 }"\"
+# shellcheck disable=SC2016
+insertAfterLine /etc/pf.conf 'nat on $ext_if from $jail_net to any -> ($ext_if)' "rdr pass on \$ext_if inet proto tcp to port \$${JAIL_NAME}_tcp_ports -> \$${JAIL_NAME}_jail
+rdr pass on \$ext_if inet proto udp to port \$${JAIL_NAME}_udp_ports -> \$${JAIL_NAME}_jail"
+echo ' Done.'
+
+################################################################################
+
+# Back up the final config files. -- cwells
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-done"
+addNote "Created backup: jail-$JAIL_NAME-done"
+
+showNotes
+
+# Saved until the end because it disconnects the SSH session. -- cwells
+pressEnterTo 'reload pf config (disconnects SSH session)'
+pfctl -F all -f /etc/pf.conf
+
+exit 0
