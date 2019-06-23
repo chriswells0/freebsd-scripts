@@ -68,8 +68,8 @@ insertAfterLine /etc/pf.conf 'jail_net=$jail_if:network' "${JAIL_NAME}_jail="\""
 ${JAIL_NAME}_tcp_ports="\""{ 8080, 8443 }"\""
 ${JAIL_NAME}_udp_ports="\""{ 3478 }"\"
 # shellcheck disable=SC2016
-insertAfterLine /etc/pf.conf 'nat on $lan_if from $jail_net to any -> ($lan_if)' "rdr pass on \$lan_if inet proto tcp to port \$${JAIL_NAME}_tcp_ports -> \$${JAIL_NAME}_jail
-rdr pass on \$lan_if inet proto udp to port \$${JAIL_NAME}_udp_ports -> \$${JAIL_NAME}_jail"
+insertAfterLine /etc/pf.conf 'nat on $ext_if from $jail_net to any -> ($ext_if)' "rdr pass on \$ext_if inet proto tcp to port \$${JAIL_NAME}_tcp_ports -> \$${JAIL_NAME}_jail
+rdr pass on \$ext_if inet proto udp to port \$${JAIL_NAME}_udp_ports -> \$${JAIL_NAME}_jail"
 echo ' Done.'
 
 ################################################################################

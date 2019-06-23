@@ -64,7 +64,7 @@ jail_net=$jail_if:network'
 # shellcheck disable=SC2016
 insertAfterLine /etc/pf.conf 'scrub in all' '
 # Enable NAT for jails:
-nat on $lan_if from $jail_net to any -> ($lan_if)
+nat on $ext_if from $jail_net to any -> ($ext_if)
 '
 echo ' Done.'
 
