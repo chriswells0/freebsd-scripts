@@ -146,6 +146,19 @@ no-tlsv1_1
 
 runAsScriptInJail "$JAIL_NAME" 'service turnserver start'
 
+if hasPackage 'ossec-hids-local'; then
+	insertBeforeLine /usr/local/ossec-hids/etc/ossec.conf '</ossec_config>' "
+
+  <!-- TURN Jail: $JAIL_NAME -->
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/usr/jails/$JAIL_NAME/var/log/turn_*</location>
+  </localfile>
+
+"
+fi
+
 ################################################################################
 
 # shellcheck disable=SC2039
