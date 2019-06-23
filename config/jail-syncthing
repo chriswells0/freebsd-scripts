@@ -1,0 +1,98 @@
+#!/bin/sh
+
+:<<DOCUMENTATION
+
+	Description:	Installs and configures Syncthing inside a jail.
+	Parameters:
+		--name jail_name (required): the name of an existing jail to configure
+	Author:			Chris Wells (https://chriswells.io)
+
+DOCUMENTATION
+
+
+# shellcheck source=/dev/null
+. "$(dirname "$(readlink -f "$0")")/../lib/shell.common"
+importScript 'shell.io'
+importScript 'shell.pkg'
+
+# Require root in order to write to the config files. -- cwells
+requireRootOrExit
+
+SCRIPT_PATH="$(getScriptPath)"
+
+if ! hasPackage 'ezjail'; then
+	echo 'You must run jail-ezjail before running this script.'
+	exit 1
+fi
+
+parseScriptOptions "$@"
+
+JAIL_NAME=$(getOption '--name')
+JAIL_IP="$(jls -N -j "$JAIL_NAME" ip4.addr)"
+
+if [ -z "$JAIL_NAME" ]; then
+	echo 'You must specify the jail name using --name.'
+	exit 1
+elif [ -z "$JAIL_IP" ]; then
+	echo "Failed to get IP for $JAIL_NAME jail. Do you need to create it using jail-create?"
+	exit 1
+fi
+
+################################################################################
+
+# Back up the config files. -- cwells
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-before-config"
+addNote "Created backup: jail-$JAIL_NAME-before-config"
+
+jailPackages "$JAIL_NAME" 'syncthing'
+
+appendToFile "/usr/jails/$JAIL_NAME/etc/rc.conf" '
+# Enable Syncthing:
+syncthing_enable="YES"
+'
+
+runAsScriptInJail "$JAIL_NAME" 'mkdir /usr/local/syncthing
+chown syncthing:syncthing /usr/local/syncthing
+service syncthing start'
+
+if hasPackage 'ossec-hids-local'; then
+	insertBeforeLine /usr/local/ossec-hids/etc/ossec.conf '</ossec_config>' "
+
+  <!-- Syncthing Jail: $JAIL_NAME -->
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/usr/jails/$JAIL_NAME/var/log/syncthing.log</location>
+  </localfile>
+
+"
+fi
+
+################################################################################
+
+# shellcheck disable=SC2039
+echo -n '
+Updating pf.conf...'
+# shellcheck disable=SC2016
+# shellcheck disable=SC2140
+insertAfterLine /etc/pf.conf 'jail_net=$jail_if:network' "${JAIL_NAME}_jail="\""$JAIL_IP"\""
+${JAIL_NAME}_tcp_ports="\""{ 22000 }"\""
+${JAIL_NAME}_udp_ports="\""{ 21027 }"\"
+# shellcheck disable=SC2016
+insertAfterLine /etc/pf.conf 'nat on $ext_if from $jail_net to any -> ($ext_if)' "rdr pass on \$ext_if inet proto tcp to port \$${JAIL_NAME}_tcp_ports -> \$${JAIL_NAME}_jail
+rdr pass on \$ext_if inet proto udp to port \$${JAIL_NAME}_udp_ports -> \$${JAIL_NAME}_jail"
+echo ' Done.'
+
+################################################################################
+
+# Back up the final config files. -- cwells
+"$SCRIPT_PATH/../backup/configs" -s "jail-$JAIL_NAME-done"
+addNote "Created backup: jail-$JAIL_NAME-done"
+
+showNotes
+
+# Saved until the end because it disconnects the SSH session. -- cwells
+pressEnterTo 'reload pf config (disconnects SSH session)'
+pfctl -F all -f /etc/pf.conf
+
+exit 0
