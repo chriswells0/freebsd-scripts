@@ -14,6 +14,11 @@ DOCUMENTATION
 # Require root to perform updates. -- cwells
 requireRootOrExit
 
+# Create a boot environment in case there are issues. -- cwells
+if which bectl > /dev/null; then
+	bectl create $(date +%Y-%m-%d.%H%M%S)
+fi
+
 freebsd-update fetch install
 
 printf "\nChecking for vulnerable packages on the host...\n"
