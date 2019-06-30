@@ -53,6 +53,13 @@ ifconfig_lo1="inet 127.1.0.0/16"
 '
 echo ' Done.'
 
+echo -n '
+Updating periodic.conf.local...'
+appendToFile /etc/periodic.conf.local '
+# Enable security audits for all jails:
+pkg_jails="*"
+'
+
 # Configure pf for jails. -- cwells
 # shellcheck disable=SC2039
 echo -n '
