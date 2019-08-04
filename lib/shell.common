@@ -163,7 +163,7 @@ setOption() {
 addNote() {
 	# Not using appendToFile here to ensure this file has no dependencies. -- cwells
 	#appendToFile "$0.notes" "$1"
-	echo "$1" >> "$0.notes"
+	echo "$1" >> "$(getScriptPath)/$(basename $0).notes"
 }
 
 # Parameters:
@@ -176,5 +176,5 @@ showNotes() {
 	fi
 	echo "$MESSAGE $0.notes:
 
-$(cat "$0.notes")"
+$(cat "$(getScriptPath)/$(basename $0).notes")"
 }
