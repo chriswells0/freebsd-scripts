@@ -38,17 +38,29 @@ if [ ! -z "$(ls -qAL -- "${DESTDIR}")" ] && [ ! -d "${DESTDIR}/.git" ]; then
 	echo 'You must delete the existing files to switch to a quarterly branch.'
 	# shellcheck disable=SC2039
 	read -r -p "Do you want to delete the contents of \"${DESTDIR}\"? [y/N]: " DELETE_FILES
+	echo ''
 	case $DELETE_FILES in
 		[Yy]* ) find "${DESTDIR}" -mindepth 1 -delete ;; # Delete all files in the dir. -- cwells
-		* ) portsnap fetch update; exit 0 ;; # Use portsnap to update from HEAD. -- cwells
+		* )
+			if [ -d "${DESTDIR}/.svn" ]; then
+				echo 'The destination directory is an SVN repo, so no update was performed.'
+				echo 'Your ports tree is still out of date. You should switch to Git.'
+			elif [ -f "${DESTDIR}/.portsnap.INDEX" ]; then
+				portsnap fetch update # Use portsnap to update from HEAD. -- cwells
+				echo ''
+				echo 'The destination directory is managed by portsnap, so an update was performed.'
+				echo 'This means you are still using the latest branch instead of quarterly.'
+			fi
+			echo 'Run portsfetch again and choose to delete your files to switch.'
+			exit 0 ;;
 	esac
 	echo ''
 fi
 
-FRESH_CLONE=false
 if [ ! -d "${DESTDIR}/.git" ]; then # Initial clone of the repo. -- cwells
 	git clone "${REPO_URL}" "${DESTDIR}"
-	FRESH_CLONE=true
+else # Update the existing repo. -- cwells
+	git -C "${DESTDIR}" pull --ff-only
 fi
 
 BRANCH=$(git -C "${DESTDIR}" branch --list -r | grep -E '^\s*origin/20[0-9]{2}Q[1-4]$' | sort | tail -1 | sed 's/ *origin\///')
@@ -59,10 +71,6 @@ fi
 
 if [ "$(git -C "${DESTDIR}" branch --show-current)" != "${BRANCH}" ]; then
 	git -C "${DESTDIR}" checkout "${BRANCH}"
-fi
-
-if [ "${FRESH_CLONE}" = 'false' ]; then
-	git -C "${DESTDIR}" pull --ff-only
 fi
 
 exit 0
